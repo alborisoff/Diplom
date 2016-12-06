@@ -1,4 +1,5 @@
-'WGS84': ['WGS84']
-'Kras40': ['SK42', 'SK95']
-'PZ90': ['PZ90']
+# Ellipsoid: Coordinate system
+'WGS84': 'WGS84'
+'Kras40': 'SK42'
+'PZ90': 'PZ90'
 
