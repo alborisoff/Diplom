@@ -1,11 +1,10 @@
-# -*- utf-8 -*-
+# -*- coding: utf-8 -*-
+
 
 def dmstodegrees(dms):
-    degrees = dms[0:2]
-    minutes = dms[3:5]
-    seconds = dms[6:len(dms)]
-    print degrees, minutes, seconds
-    degros = float(degrees) + float(minutes)/60 + float(seconds)/3600
-    return degros
+    dmssplit = dms.split(' ')
+    degrees = float(dmssplit[0]) + float(dmssplit[1])/60 + float(dmssplit[2])/3600
+    return degrees
+
 
 print dmstodegrees('55 37 34.4543223')

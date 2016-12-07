@@ -62,67 +62,86 @@ class Srv:
         return params_dict
 
     
-    class IntTrans:  # Класс для трансформирвания координат в пределах одной системы
-        
-        def __init__(self):
-            pass
+class IntTrans:  # Класс для трансформирвания координат в пределах одной системы
 
-        # Пересчёт эллипсоидальных координат B, L, H в геоцентрические X, Y, Z
-        def blh2xyz(self, B, L, H, ellipsoid_name):  
-            # Входные данные должны быть представлены в виде массива [B, L, H] - геодезические широта, долгота и высота.
-            # Широта и долгота в виде ггг.гггггг (т.е. градусы и доли градуса), высота в метрах и долях метра.
-            # Получаем параметры эллипсоида
-            a = Srv().ellipsoid_params(ellipsoid_name)['a']  # Большая полуось
-            alpha = Srv().ellipsoid_params(ellipsoid_name)['alpha']  # Сжатие эллипсоида
-            # Синус и косинус широты и долготы
-            sinB = np.sin(np.radians(B))
-            sinL = np.sin(np.radians(L))
-            cosB = np.cos(np.radians(B))
-            cosL = np.cos(np.radians(L))
-            sinB2 = sinB ** 2  # Квадрат синуса широты
-            e2 = 2 * alpha - alpha ** 2  # Квадрат первого эксцентриситета
-            subradical = 1 - e2 * sinB2  # Подкоренное значение для вычисления радиуса кривизны первого вертикала
-            N = a / (subradical ** 0.5)  # Вычисление радиуса первого вертикала
-            # Вычисление X, Y, Z
-            X = (N + H) * cosB * cosL
-            Y = (N + H) * cosB * sinL
-            Z = (H + N) * sinB - e2 * N * sinB
-            # Выдача результата в виде массива [X, Y, Z]
-            return [X, Y, Z]
+    def __init__(self):
+        pass
 
-        def ell2gauss(self, B, L, H, ellipsoid_name):
-            print 'B, L', B, L
-            n = int((6+L)/6)
-            l_part1 = 6*(n - 1)
-            l_part2 = 3 + l_part1
-            l_part3 = L - l_part2
-            l = l_part3/57.29577951
-            # Вычисление синуса и косинуса широты и долготы.
-            sinB = np.sin(np.radians(B))
-            sin2B = np.sin(np.radians(2*B))
-            sinL = np.sin(np.radians(L))
-            cosB = np.cos(np.radians(B))
-            cosL = np.cos(np.radians(L))
-            tgB = np.tan(np.radians(B))
-            tgB2 = tgB**2
-            sinB2 = sinB**2  # Квадрат синуса широты
-            e2 = 2*alpha - alpha**2  # Квадрат первого эксцентриситета
-            es2 = e2/(1 - e2)
-            subradical = 1 - e2*sinB2  # Подкоренное значение для вычисления радиуса кривизны первого вертикала
-            N = a/(subradical**0.5)  # Вычисление радиуса первого вертикала
-            M = N*(1 - e2)
-            # В связи с громоздкостью формул вычисления плоских координат, вычисление будет проходить постепенно,
-            # от кластера к кластеру.
-            # Поэтапное вычисление x.
-            a2 = 0.5*(N*sinB*cosB)
-            teta = cosB*(es2**0.5)
-            a4 = (1/24)*(N*sinB*(cosB**3))*(5 - (tgB**2) + 9*(teta**2) + 4*(teta**4))
-            a6 = (1/720)*(N*sinB*(cosB**5))*(61 - 58*(tgB**2) + tgB**4 + 270*(teta**2) - 330*(teta**2)*(tgB**2))
-            a8 = (1/40320)*(N*sinB*(cosB**7))*N*sinB*(cosB**7)*(1385 -  3111*(tgB**2) + 543*(tgB**4) - (tgB**6))
-            ro = 206264.806
+    # Пересчёт эллипсоидальных координат B, L, H в геоцентрические X, Y, Z
+    def blh2xyz(self, B, L, H, ellipsoid_name):
+        # Входные данные должны быть представлены в виде массива [B, L, H] - геодезические широта, долгота и высота.
+        # Широта и долгота в виде ггг.гггггг (т.е. градусы и доли градуса), высота в метрах и долях метра.
+        # Получаем параметры эллипсоида
+        a = Srv().ellipsoid_params(ellipsoid_name)['a']  # Большая полуось
+        alpha = Srv().ellipsoid_params(ellipsoid_name)['alpha']  # Сжатие эллипсоида
+        # Синус и косинус широты и долготы
+        sinB = np.sin(np.radians(B))
+        sinL = np.sin(np.radians(L))
+        cosB = np.cos(np.radians(B))
+        cosL = np.cos(np.radians(L))
+        sinB2 = sinB ** 2  # Квадрат синуса широты
+        e2 = 2 * alpha - alpha ** 2  # Квадрат первого эксцентриситета
+        subradical = 1 - e2 * sinB2  # Подкоренное значение для вычисления радиуса кривизны первого вертикала
+        N = a / (subradical ** 0.5)  # Вычисление радиуса первого вертикала
+        # Вычисление X, Y, Z
+        X = (N + H) * cosB * cosL
+        Y = (N + H) * cosB * sinL
+        Z = (H + N) * sinB - e2 * N * sinB
+        # Выдача результата в виде массива [X, Y, Z]
+        return [X, Y, Z]
 
-            return n, x, y
+    def ell2gauss(self, B, L, H, ellipsoid_name):
+        print 'B, L', B, L
+        Bsec = B*3600
+        n = int((6+L)/6)
+        l_part1 = 6*(n - 1)
+        l_part2 = 3 + l_part1
+        l_part3 = L - l_part2
+        l = l_part3/57.29577951
+        a = Srv().ellipsoid_params(ellipsoid_name)['a']
+        alpha = Srv().ellipsoid_params(ellipsoid_name)['alpha']
+        # Вычисление синуса и косинуса широты и долготы.
+        sinB = np.sin(np.radians(B))
+        sin2B = np.sin(np.radians(2.0*B))
+        sinL = np.sin(np.radians(L))
+        cosB = np.cos(np.radians(B))
+        cosL = np.cos(np.radians(L))
+        tgB = np.tan(np.radians(B))
+        tgB2 = tgB**2
+        sinB2 = sinB**2  # Квадрат синуса широты
+        e2 = 2*alpha - alpha**2  # Квадрат первого эксцентриситета
+        es2 = e2/(1 - e2)
+        subradical = 1 - e2*sinB2  # Подкоренное значение для вычисления радиуса кривизны первого вертикала
+        N = a/(subradical**0.5)  # Вычисление радиуса первого вертикала
+        M = N*(1 - e2)
+        # Постепенный пересчёт эллиптических координат в плоские прямоугольные Гаусса.
+        a2 = 0.5*(N*sinB*cosB)
+        teta = cosB*(es2**0.5)
+        a4 = (1/24)*(N*sinB*(cosB**3))*(5 - (tgB**2) + 9*(teta**2) + 4*(teta**4))
+        a6 = (1/720)*(N*sinB*(cosB**5))*(61 - 58*(tgB**2) + tgB**4 + 270*(teta**2) - 330*(teta**2)*(tgB**2))
+        a8 = (1/40320)*(N*sinB*(cosB**7))*N*sinB*(cosB**7)*(1385 -  3111*(tgB**2) + 543*(tgB**4) - (tgB**6))
+        ro = 206264.806
+        b1 = N*cosB
+        b3 = (1/6)*N*(cosB**3)*(-(tgB**2) + teta**2)
+        b5 = (1/120)*N*(cosB**5)*(5 - 18*(tgB**2) + tgB**4 - 14*(teta**2) - 58*(teta**3)*(tgB**2))
+        b7 = (1/5040)*N*(cosB**7)*(61 - 479*(tgB**2) + 179*(tgB**4) - tgB**6)
+        Ax = 1 + (3/4)*e2 + (45/64)*(e2**2)
+        Bx = (3/4)*e2 + (15/16)*(e2**2)
+        Cx = (15/64)*(e2**2)
+        X = a*(1 - e2)*(Ax*(Bsec/ro) - (Bx/2)*sin2B + (Cx/4)*(sinB**4))
+        x = X + a2*(l**2) + a4*(l**4) + a6*(l**6) + a8*(l**8)
+        y = b1*l + b3*(l**3) + b5*(l**5) + b7*(l**7)
+        return n, x, y
 
 
 
 print Srv().transform_params('WGS84', 'SK42')
+
+ellipsoid_name = 'WGS84'
+prelat = '56 59 9.40754'
+prelon = '41 0 12.94567'
+H = 146
+lat = Srv().dms2ddd(prelat)
+lon = Srv().dms2ddd(prelon)
+print IntTrans().blh2xyz(lat, lon, H, ellipsoid_name)
+print IntTrans().ell2gauss(lat, lon, H, ellipsoid_name)
