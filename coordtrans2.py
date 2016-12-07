@@ -133,6 +133,28 @@ class IntTrans:  # Класс для трансформирвания коорд
         y = b1*l + b3*(l**3) + b5*(l**5) + b7*(l**7)
         return n, x, y
 
+    def xyz2bl(self, X, Y, Z, ellipsoid_name):
+        # С вычислением долготы всё просто...
+        ellparams = Srv().ellipsoid_params(ellipsoid_name)
+        a = ellparams['a']
+        alpha = ellparams['alpha']
+        e2 = 2 * alpha - alpha ** 2
+        L = np.degrees(np.arctan(Y/X))
+        # А вот широту придётся вычислять постепенно.
+        R = (X**2 + Y**2)**0.5
+        r = (Z**2 + (X**2 + Y**2)*(1 - e2))**0.5
+        es2 = e2/(1 - e2)
+        b = a*((1 - e2)**0.5)
+        big_chisl = r**3 + b*es2*(Z**2)
+        big_znaml = r**3 - b*(e2**0.5)*(1 - e2)*(R**2)
+        tanB = (Z/R)*(big_chisl/big_znaml)
+        B = np.degrees(np.arctan(tanB))
+        return [B, L]
+
+
+
+
+
 
 class ExtTrans:  # Функции трансформирования координат из одной системы в другую.
 
@@ -142,13 +164,13 @@ class ExtTrans:  # Функции трансформирования коорд�
     def recthelmert(self, X, Y, Z, old_system, new_system):  # Пересчёт прямоугольных координат по формуле Гельмерта
         # Загрузка семи параметров пересчёта
         tparameters = Srv().transform_params(old_system, new_system)
-        dx = tparameters['dx']
-        dy = tparameters['dy']
-        dz = tparameters['dz']
-        wx = tparameters['wx']
-        wy = tparameters['wy']
-        wz = tparameters['wz']
-        m = tparameters['m']
+        dx = eval(tparameters['dx'])
+        dy = eval(tparameters['dy'])
+        dz = eval(tparameters['dz'])
+        wx = eval(tparameters['wx'])
+        wy = eval(tparameters['wy'])
+        wz = eval(tparameters['wz'])
+        m = eval(tparameters['m'])
         # Подготовка матриц пересчёта
         oldmatrix = np.matrix([[X],
                                [Y],
@@ -156,7 +178,49 @@ class ExtTrans:  # Функции трансформирования коорд�
         deltamatrix = np.matrix([[dx],
                                  [dy],
                                  [dz]])
-        omegamatrix = np.matrix([[1, wz, -wy]])
+        omegamatrix = np.matrix([[1, wz, -wy],
+                                 [-wz, 1, wx],
+                                 [wy, -wx, 1]])
+        newmatrix = deltamatrix + (1 + m)*omegamatrix*oldmatrix
+        result = np.squeeze(np.asarray(newmatrix))
+        return [result[0], result[1], result[2]]
+
+    def molodensky(self, B, L, H, old_system, new_system):
+        tparameters = Srv().transform_params(old_system, new_system)
+        dx = eval(tparameters['dx'])
+        dy = eval(tparameters['dy'])
+        dz = eval(tparameters['dz'])
+        wx = eval(tparameters['wx'])
+        wy = eval(tparameters['wy'])
+        wz = eval(tparameters['wz'])
+        m = eval(tparameters['m'])
+        old_a = eval(tparameters['old_a'])
+        new_a = eval(tparameters['new_a'])
+        old_alpha = eval(tparameters['old_alpha'])
+        new_alpha = eval(tparameters['new_alpha'])
+        da = new_a - old_a
+        old_e2 = 2 * old_alpha - old_alpha ** 2  # Квадрат первого эксцентриситета
+        es2 = old_e2 / (1 - old_e2)
+        subradical = 1 - old_e2 * sinB2  # Подкоренное значение для вычисления радиуса кривизны первого вертикала
+        old_N = a / (subradical ** 0.5)  # Вычисление радиуса первого вертикала
+        old_M = old_N * (1 - old_e2)
+        ro = 206264.806
+        # Вычисление синуса и косинуса широты и долготы.
+        sinB = np.sin(np.radians(B))
+        sin2B = np.sin(np.radians(2.0 * B))
+        sinL = np.sin(np.radians(L))
+        cosB = np.cos(np.radians(B))
+        cosL = np.cos(np.radians(L))
+        tgB = np.tan(np.radians(B))
+        tgB2 = tgB ** 2
+        sinB2 = sinB ** 2  # Квадрат синуса широты
+        # Постепенное вычисление поправок широты, долготы и высоты.
+        dB_part1 = ro/(old_M + H)
+        dB_part2 = (N/old_a)
+
+
+
+
 
 
 
@@ -171,5 +235,11 @@ prelon = '41 0 12.94567'
 H = 146
 lat = Srv().dms2ddd(prelat)
 lon = Srv().dms2ddd(prelon)
-print IntTrans().blh2xyz(lat, lon, H, ellipsoid_name)
+rects = IntTrans().blh2xyz(lat, lon, H, ellipsoid_name)
+print rects
 print IntTrans().ell2gauss(lat, lon, H, ellipsoid_name)
+print 'Transformed:'
+rerects = ExtTrans().recthelmert(rects[0], rects[1], rects[2], 'WGS84', 'SK42')
+print rerects
+againell = IntTrans().xyz2bl(rects[0], rects[1], rects[2], ellipsoid_name)
+print 'againell', againell
