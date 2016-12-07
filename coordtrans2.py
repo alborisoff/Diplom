@@ -134,6 +134,34 @@ class IntTrans:  # Класс для трансформирвания коорд
         return n, x, y
 
 
+class ExtTrans:  # Функции трансформирования координат из одной системы в другую.
+
+    def __init__(self):
+        pass
+
+    def recthelmert(self, X, Y, Z, old_system, new_system):  # Пересчёт прямоугольных координат по формуле Гельмерта
+        # Загрузка семи параметров пересчёта
+        tparameters = Srv().transform_params(old_system, new_system)
+        dx = tparameters['dx']
+        dy = tparameters['dy']
+        dz = tparameters['dz']
+        wx = tparameters['wx']
+        wy = tparameters['wy']
+        wz = tparameters['wz']
+        m = tparameters['m']
+        # Подготовка матриц пересчёта
+        oldmatrix = np.matrix([[X],
+                               [Y],
+                               [Z]])
+        deltamatrix = np.matrix([[dx],
+                                 [dy],
+                                 [dz]])
+        omegamatrix = np.matrix([[1, wz, -wy]])
+
+
+
+
+
 
 print Srv().transform_params('WGS84', 'SK42')
 
