@@ -244,8 +244,8 @@ class ExtTrans:  # Функции трансформирования коорд�
         return [lat_new, lon_new, hgt_new]
 
 
-ellipsoid_name = 'PZ90'
-print 'ВХОДНЫЕ КООРДИНАТЫ (PZ90)'
+ellipsoid_name = 'WGS84'
+print 'ВХОДНЫЕ КООРДИНАТЫ (WGS84)'
 print 'Введите эллипсоидальные координаты и геодезическую высоту.'
 print 'Широта и долгота вводятся в формате гг_мм_сс.ссссс в одинарных или двойных кавычках!'
 lat = Srv().dms2ddd(input('B: '))
@@ -268,15 +268,30 @@ print 'Зона: ', gauss[0]
 print 'x: ', gauss[1]
 print 'y: ', gauss[2]
 print '=========='
-print 'ТРАНСФОРМИРОВАННЫЕ КООРДИНАТЫ (PZ90 => WGS84)'
+print 'ТРАНСФОРМИРОВАННЫЕ КООРДИНАТЫ (WGS84 => PZ90)'
 print 'Геоцентрические по 7-параметрической формуле Гельмерта'
-rerects = ExtTrans().recthelmert(rects[0], rects[1], rects[2], 'PZ90', 'WGS84')
-print 'X1: ', rerects[0]
-print 'Y1: ', rerects[1]
-print 'Z1: ', rerects[2]
+rerects_wgs_pz = ExtTrans().recthelmert(rects[0], rects[1], rects[2], 'WGS84', 'PZ90')
+print 'X1: ', rerects_wgs_pz[0]
+print 'Y1: ', rerects_wgs_pz[1]
+print 'Z1: ', rerects_wgs_pz[2]
 print '----------'
 print 'Эллипсоидальные по формуле Молоденского'
-mldn = ExtTrans().molodensky(lat, lon, height, 'PZ90', 'WGS84')
-print 'B1: ', mldn[0]
-print 'L1: ', mldn[1]
-print 'H1: ', mldn[2]
+mldn_wgs_pz = ExtTrans().molodensky(lat, lon, height, 'WGS84', 'PZ90')
+print 'B1: ', mldn_wgs_pz[0]
+print 'L1: ', mldn_wgs_pz[1]
+print 'H1: ', mldn_wgs_pz[2]
+print '=========='
+print 'ТРАНСФОРМИРОВАННЫЕ КООРДИНАТЫ (PZ90 => SK42)'
+print 'Геоцентрические по 7-параметрической формуле Гельмерта'
+rerects_pz_sk42 = ExtTrans().recthelmert(rects[0], rects[1], rects[2], 'PZ90', 'SK42')
+print 'X1: ', rerects_pz_sk42[0]
+print 'Y1: ', rerects_pz_sk42[1]
+print 'Z1: ', rerects_pz_sk42[2]
+print '----------'
+print 'Эллипсоидальные по формуле Молоденского'
+mldn_pz_sk42 = ExtTrans().molodensky(lat, lon, height, 'PZ90', 'SK42')
+print 'B1: ', mldn_pz_sk42[0]
+print 'L1: ', mldn_pz_sk42[1]
+print 'H1: ', mldn_pz_sk42[2]
+
+
