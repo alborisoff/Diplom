@@ -246,21 +246,15 @@ class ExtTrans:  # Функции трансформирования коорд�
 
 ellipsoid_name = 'WGS84'
 print 'ВХОДНЫЕ КООРДИНАТЫ (WGS84)'
-print 'Введите эллипсоидальные координаты и геодезическую высоту.'
-print 'Широта и долгота вводятся в формате гг_мм_сс.ссссс в одинарных или двойных кавычках!'
-lat = Srv().dms2ddd(input('B: '))
-lon = Srv().dms2ddd(input('L: '))
-height = float(input('H: '))
+print 'Введите геоцентрические коордиаты пункта.'
+x_big = float(input('X: '))
+y_big = float(input('Y: '))
+z_big = float(input('Z: '))
 print '----------'
-print 'B: ', lat
-print 'L: ', lon
-print 'H: ', height
-rects = IntTrans().blh2xyz(lat, lon, height, ellipsoid_name)
-print '----------'
-print 'Геоцентрические'
-print 'X: ', rects[0]
-print 'Y: ', rects[1]
-print 'Z: ', rects[2]
+latlon = IntTrans().xyz2bl(x_big, y_big, z_big, ellipsoid_name)
+print 'Криволинейные координаты пункта'
+print 'B = ', latlon[0]
+print 'L = ', latlon[1]
 print '----------'
 print 'Плоские прямоугольные Гаусса'
 gauss =  IntTrans().ell2gauss(lat, lon, height, ellipsoid_name)
