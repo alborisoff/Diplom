@@ -346,13 +346,3 @@ print 'DELTA S (1 - 2) = ', delta_big_s_1_2
 print 'DELTA S (1 - 3) = ', delta_big_s_1_3
 print 'DELTA S (2 - 3) = ', delta_big_s_2_3
 print '***** КОНЕЦ ВЫЧИСЛЕНИЙ *****'
-
-
-
-
-
-
-
-
-
-
