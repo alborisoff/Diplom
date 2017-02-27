@@ -101,61 +101,82 @@ class IntTrans:  # Класс для трансформирвания коорд
         # Выдача результата в виде массива [X, Y, Z]
         return [X, Y, Z]
 
-    def ell2gauss(self, B, L, H, ellipsoid_name):
-        Bsec = B*3600
-        n = int((6+L)/6)
-        l_part1 = 6*(n - 1)
+    def ellipsoidaltogauss(self, latrad, lonrad, ellipsoid_name):
+        a_axis = Srv().ellipsoid_params(ellipsoid_name)['a']
+        e2 = Srv().ellipsoid_params(ellipsoid_name)['e2']
+        es2 = e2 / (1 - e2)
+        latsec = np.degrees(latrad)*3600
+        sinlat = np.sin(latrad)
+        sinlat2 = sinlat**2
+        sinlat4 = sinlat**4
+        sin2lat = np.sin(2.0*latrad)
+        coslat = np.cos(latrad)
+        coslat3 = coslat**3
+        coslat5 = coslat**5
+        coslat7 = coslat**7
+        tanlat = np.tan(latrad)
+        tanlat2 = tanlat**2
+        tanlat4 = tanlat**4
+        tanlat6 = tanlat**6
+        subradical = 1 - e2*sinlat2
+        n_big = a_axis/(subradical**0.5)
+        eta = (es2**0.5)*coslat
+        n_zone = int((6 + np.degrees(lonrad)) / 6)
+        l_part1 = 6 * (n_zone - 1)
         l_part2 = 3 + l_part1
-        l_part3 = L - l_part2
-        l = l_part3/57.29577951
-        a = Srv().ellipsoid_params(ellipsoid_name)['a']
-        alpha = Srv().ellipsoid_params(ellipsoid_name)['alpha']
-        # Вычисление синуса и косинуса широты и долготы.
-        sinB = np.sin(np.radians(B))
-        sin2B = np.sin(np.radians(B*2.0))
-        cosB = np.cos(np.radians(B))
-        tgB = np.tan(np.radians(B))
-        sinB2 = sinB**2  # Квадрат синуса широты
-        e2 = 2*alpha - alpha**2  # Квадрат первого эксцентриситета
-        es2 = e2/(1 - e2)
-        subradical = 1 - e2*sinB2  # Подкоренное значение для вычисления радиуса кривизны первого вертикала
-        N = a/(subradical**0.5)  # Вычисление радиуса первого вертикала
-        # Постепенный пересчёт эллиптических координат в плоские прямоугольные Гаусса.
-        a2 = 0.5*(N*sinB*cosB)
-        etha = cosB*(es2**0.5)
-        a4 = (1/24)*(N*sinB*(cosB**3))*(5 - (tgB**2) + 9*(etha**2) + 4*(etha**4))
-        a6 = (1/720)*(N*sinB*(cosB**5))*(61 - 58*(tgB**2) + tgB**4 + 270*(etha**2) - 330*(etha**2)*(tgB**2))
-        a8 = (1/40320)*(N*sinB*(cosB**7))*N*sinB*(cosB**7)*(1385 -  3111*(tgB**2) + 543*(tgB**4) - (tgB**6))
-        ro = 206264.806
-        b1 = N*cosB
-        b3 = (1/6)*N*(cosB**3)*(-(tgB**2) + etha**2)
-        b5 = (1/120)*N*(cosB**5)*(5 - 18*(tgB**2) + tgB**4 - 14*(etha**2) - 58*(etha**3)*(tgB**2))
-        b7 = (1/5040)*N*(cosB**7)*(61 - 479*(tgB**2) + 179*(tgB**4) - tgB**6)
-        Ax = 1 + (3/4)*e2 + (45/64)*(e2**2)
-        Bx = (3/4)*e2 + (15/16)*(e2**2)
-        Cx = (15/64)*(e2**2)
-        X = a*(1 - e2)*(Ax*(Bsec/ro) - (Bx/2)*sin2B + (Cx/4)*(sinB**4))
-        x = X + a2*(l**2) + a4*(l**4) + a6*(l**6) + a8*(l**8)
-        y = b1*l + b3*(l**3) + b5*(l**5) + b7*(l**7)
-        return n, x, y
+        l_part3 = np.degrees(lonrad) - l_part2
+        l = l_part3 / 57.29577951
+        a_big_x = 1 + (3/4)*e2 + (45/64)*(e2**2)
+        b_big_x = (3/4)*e2 + (15/16)*(e2**2)
+        c_big_x = (15/64)*(e2**2)
+        x_big_m1 = a_axis
+        x_big_m2 = 1 - e2
+        x_big_s31 = a_big_x*(latsec/Const().ro)
+        x_big_s32 = (b_big_x/2)*sin2lat
+        x_big_s33 = (c_big_x/4)*sinlat4
+        x_big = x_big_m1*x_big_m2*(x_big_s31 + x_big_s32 + x_big_s33)
+        a2 = (1/2)*n_big*sinlat*coslat
+        a4 = (1/24)*n_big*sinlat*coslat3*(5 - tanlat2 + 9*(eta**2) + 4*(eta**4))
+        a6 = (1/720)*n_big*sinlat*coslat5*(61 - 58*tanlat2 + tanlat4 + 270*(eta**2) - 330*(eta**2)*tanlat2)
+        a8 = (1/40320)*n_big*sinlat*coslat7*(1385 - 3111*tanlat2 + 543*tanlat4 - tanlat6)
+        b1 = n_big*coslat
+        b3 = (1/6)*n_big*coslat3*(-tanlat2 + (eta**2))
+        b5 = (1/120)*n_big*coslat5*(5 - 18*tanlat2 + tanlat4 - 14*(eta**2) - 58*(eta**2)*tanlat2)
+        b7 = (1/5040)*n_big*coslat7*(61 - 479*tanlat2 + 179*tanlat4 - tanlat6)
+        x_gauss = x_big + a2*(l**2) + a4*(l**4) + a6*(l**6) + a8*(l**8)
+        y_gauss = b1*l + b3*(l**3) + b5*(l**5) + b7*(l**7) + 500000
+        return [n_zone, x_gauss, y_gauss]
 
-    def xyz2bl(self, X, Y, Z, ellipsoid_name):
-        # С вычислением долготы всё просто...
-        ellparams = Srv().ellipsoid_params(ellipsoid_name)
-        a = ellparams['a']
-        alpha = ellparams['alpha']
-        e2 = 2 * alpha - alpha ** 2
-        L = np.degrees(np.arctan(Y/X))
-        # А вот широту придётся вычислять постепенно.
-        R = (X**2 + Y**2)**0.5
-        r = (Z**2 + (X**2 + Y**2)*(1 - e2))**0.5
-        es2 = e2/(1 - e2)
-        b = a*((1 - e2)**0.5)
-        big_chisl = r**3 + b*es2*(Z**2)
-        big_znaml = r**3 - b*(e2**0.5)*(1 - e2)*(R**2)
-        tanB = (Z/R)*(big_chisl/big_znaml)
-        B = np.degrees(np.arctan(tanB))
-        return [B, L]
+    def geocentrtoellipsoidal(self, x_big, y_big, z_big, ellipsoid_name):
+        a = Srv().ellipsoid_params(ellipsoid_name)['a']
+        e2 = Srv().ellipsoid_params(ellipsoid_name)['e2']
+        es2 = e2 / (1 - e2)
+        b = a * ((1 - e2) ** 0.5)
+        # Вычисление R
+        r_big = (x_big**2 + y_big**2)**0.5
+        # Постепенное вычисление r
+        r_small_p1 = z_big**2
+        r_small_p2 = (x_big**2 + y_big**2)
+        r_small_p3 = 1 - e2
+        r_small = (r_small_p1 + r_small_p2*r_small_p3)**0.5
+        # Постепенное вычисление тангенса широты
+        tglat_ch_1 = z_big
+        tglat_ch_2 = r_small**3 + b*es2*(z_big**2)
+        tglat_zn_1 = r_big
+        tglat_zn_2 = r_small**3 - b*e2*(1 - e2)*(r_big**2)
+        tglat = (tglat_ch_1*tglat_ch_2)/(tglat_zn_1*tglat_zn_2)  # Вычисленный тангенс широты
+        latrad = np.arctan(tglat)  # Широта в радианах
+        latdeg = np.degrees(latrad)  # Широта в градусах
+        tanlon = y_big/x_big  # Тангенс долготы
+        lonrad = np.arctan(tanlon)  # Долгота в радианах
+        londeg = np.degrees(lonrad)  # Долгота в градусах
+        # Постепенное вычисление высоты
+        h_big_p1 = r_big*np.cos(latrad)
+        h_big_p2 = z_big*np.sin(latrad)
+        h_big_p3 = 1 - e2*(np.sin(latrad))**2
+        h_big = h_big_p1 + h_big_p2 - a*(h_big_p3**0.5)
+        # Возвращаем широту в радианах, широту в градусах, долготу в радианах, долготу в градусах и высоту.
+        return [latrad, latdeg, lonrad, londeg, h_big]
 
 
 class ExtTrans:  # Функции трансформирования координат из одной системы в другую.
@@ -184,15 +205,6 @@ class ExtTrans:  # Функции трансформирования коорд�
         omegamatrix = np.matrix([[1, wz, -wy],
                                  [-wz, 1, wx],
                                  [wy, -wx, 1]])
-        print '***'
-        print 'Параметры преобразования'
-        print 'Масштабный коэффициент m', m
-        print 'Матрица разностей bigx_old, bigy_old, bigz_old'
-        print deltamatrix
-        print ''
-        print 'Матрица разворотов координатных осей'
-        print omegamatrix
-        print '***'
         newmatrix = deltamatrix + (1 + m)*omegamatrix*oldmatrix
         result = np.squeeze(np.asarray(newmatrix))
         return [result[0], result[1], result[2]]
@@ -251,41 +263,25 @@ x_big = float(input('X: '))
 y_big = float(input('Y: '))
 z_big = float(input('Z: '))
 print '----------'
-latlon = IntTrans().xyz2bl(x_big, y_big, z_big, ellipsoid_name)
+latlonhgt = IntTrans().geocentrtoellipsoidal(x_big, y_big, z_big, ellipsoid_name)
 print 'Криволинейные координаты пункта'
-print 'B = ', latlon[0]
-print 'L = ', latlon[1]
+print 'B = ', latlonhgt[1]
+print 'L = ', latlonhgt[3]
+print 'H = ', latlonhgt[4]
 print '----------'
-print 'Плоские прямоугольные Гаусса'
-gauss =  IntTrans().ell2gauss(lat, lon, height, ellipsoid_name)
-print 'Зона: ', gauss[0]
-print 'x: ', gauss[1]
-print 'y: ', gauss[2]
-print '=========='
-print 'ТРАНСФОРМИРОВАННЫЕ КООРДИНАТЫ (WGS84 => PZ90)'
-print 'Геоцентрические по 7-параметрической формуле Гельмерта'
-rerects_wgs_pz = ExtTrans().recthelmert(rects[0], rects[1], rects[2], 'WGS84', 'PZ90')
-print 'X1: ', rerects_wgs_pz[0]
-print 'Y1: ', rerects_wgs_pz[1]
-print 'Z1: ', rerects_wgs_pz[2]
+gauss = IntTrans().ellipsoidaltogauss(latlonhgt[0], latlonhgt[2], ellipsoid_name)
+print 'Координаты в проекции Гаусса'
+print 'Номер зоны: ', gauss[0]
+print 'x = ', gauss[1]
+print 'y = ', gauss[2]
 print '----------'
-print 'Эллипсоидальные по формуле Молоденского'
-mldn_wgs_pz = ExtTrans().molodensky(lat, lon, height, 'WGS84', 'PZ90')
-print 'B1: ', mldn_wgs_pz[0]
-print 'L1: ', mldn_wgs_pz[1]
-print 'H1: ', mldn_wgs_pz[2]
-print '=========='
-print 'ТРАНСФОРМИРОВАННЫЕ КООРДИНАТЫ (PZ90 => SK42)'
-print 'Геоцентрические по 7-параметрической формуле Гельмерта'
-rerects_pz_sk42 = ExtTrans().recthelmert(rects[0], rects[1], rects[2], 'PZ90', 'SK42')
-print 'X1: ', rerects_pz_sk42[0]
-print 'Y1: ', rerects_pz_sk42[1]
-print 'Z1: ', rerects_pz_sk42[2]
-print '----------'
-print 'Эллипсоидальные по формуле Молоденского'
-mldn_pz_sk42 = ExtTrans().molodensky(lat, lon, height, 'PZ90', 'SK42')
-print 'B1: ', mldn_pz_sk42[0]
-print 'L1: ', mldn_pz_sk42[1]
-print 'H1: ', mldn_pz_sk42[2]
-
+print 'ПРЕОБРАЗОВАННЫЕ КООРДИНАТЫ (В СИСТЕМУ ПЗ-90)'
+rerct = ExtTrans().recthelmert(x_big, y_big, z_big, 'WGS84', 'PZ90')
+print 'Прямоугольные'
+print 'X = ', rerct[0]
+print 'Y = ', rerct[1]
+print 'Z = ', rerct[2]
+print '--------'
+print 'Криволинейные'
+# pz_ell = IntTrans().
 
