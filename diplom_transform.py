@@ -68,14 +68,14 @@ class IntTrans:
         cosL = np.cos(np.radians(l_big))
         x_big = (n_big + h_big)*cosB*cosL
         y_big = (n_big + h_big)*cosB*sinL
-        z_big = (n_big + h_big)*sinB - e2*n_big*sinB
+        z_big = sinB*(n_big*(1 - e2) + h_big)
         return [x_big, y_big, z_big]
 
     def geocentr2geodez(self, ellipsoid, x_big, y_big, z_big):
         b_big, l_big, h_big, b, c = 0, 0, 0, 0, 0
         a = Srv().ellparams(ellipsoid)["a"]
         e2 = Srv().ellparams(ellipsoid)["e2"]
-        r = (x_big ** 2 + y_big ** 2) ** 0.5
+        r = (x_big**2 + y_big**2)**0.5
         if not(x_big == 0 and y_big == 0 and z_big == 0):
             if r == 0:
                 b_big = (np.pi*z_big)/abs(2*z_big)
@@ -93,36 +93,46 @@ class IntTrans:
                     l_big = l_big_pre
 
                 if z_big == 0:
+                    print "Z == 0!!!"
                     b_big = 0
+                    print r, a
                     h_big = r - a
                 else:
+                    ############## ПОЛНОСТЬЮ ПЕРЕСМОТРЕТЬ ФРАГМЕНТ ###########################################
+                    print 'Lets count!'
                     r_big = (x_big**2 + y_big**2 + z_big**2)**0.5
                     c = np.arcsin(z_big/r_big)
                     p = (e2*a)/(2*r_big)
                     s1 = 0
-                    d = 0
+                    d = 1
                     d_norm = np.radians(0.0001/3600)
                     while d >= d_norm:
                         b = c + s1
                         s2 = np.arcsin((p*np.sin(2*b))/(Srv().bigsqrt(ellipsoid, np.degrees(b))))
                         d = abs(s2 - s1)
                         s1 = s2
+                        print "!", d, "!", np.degrees(b), s2, s1, d_norm, '...'
                     b_big = b
-                    h_big = r*np.cos(b) + z_big*np.sin(b) - a*Srv().bigsqrt(ellipsoid, np.degrees(b))
+                    print r*np.cos(b_big), "++"
+                    print z_big*np.sin(b_big), "++"
+                    print a*Srv().bigsqrt(ellipsoid, np.degrees(b)), "--++--"
+                    h_big = r*np.cos(b_big) + z_big*np.sin(b_big) - a*Srv().bigsqrt(ellipsoid, np.degrees(b))
+                    ###########################################################################################
         return [np.degrees(b_big), np.degrees(l_big), h_big]
 
 
 system = "WGS84"
-b = Srv().dms2ddd("55 51 4.8857")
-l = Srv().dms2ddd("37 26 18.28432")
+# b = Srv().dms2ddd("55 51 4.8857")
+b = Srv().dms2ddd("54 41 12.20557")
+l = Srv().dms2ddd("25 17 50.97001")
 h = 191.000
 print "Params", Srv().ellparams(system)
 print b, l, h
-print IntTrans().geodez2geocentr(system, b, l, h)
+print "Geocentr: ", IntTrans().geodez2geocentr(system, b, l, h)
 x = IntTrans().geodez2geocentr(system, b, l, h)[0]
 y = IntTrans().geodez2geocentr(system, b, l, h)[1]
 z = IntTrans().geodez2geocentr(system, b, l, h)[2]
-print x
-print y
-print z
+print "X = ", x
+print "Y = ", y
+print "Z = ", z
 print IntTrans().geocentr2geodez(system, x, y, z)
