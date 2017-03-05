@@ -256,8 +256,8 @@ class ExtTrans:  # Функции трансформирования коорд�
         return [lat_new, lon_new, hgt_new]
 
 
-ellipsoid_name = 'WGS84'
-print 'ВХОДНЫЕ КООРДИНАТЫ (WGS84)'
+ellipsoid_name = 'Kras40'
+print 'ВХОДНЫЕ КООРДИНАТЫ (Kras40)'
 print 'Введите геоцентрические коордиаты пункта.'
 x_big = float(input('X: '))
 y_big = float(input('Y: '))
