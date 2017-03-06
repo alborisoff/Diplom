@@ -334,7 +334,49 @@ class ExtTrans:
         result = np.squeeze(np.asarray(newmatrix))
         return result
 
-    # def geodezgost(self, b_big, l_big, h_big, oldsys, newsys):
+    def geodezgost(self, b_big, l_big, h_big, oldsys, newsys):
+        transpars = Srv().transformparams(oldsys, newsys)
+        dx = transpars["dx"]
+        dy = transpars["dy"]
+        dz = transpars["dz"]
+        wx = transpars["wx"]
+        wy = transpars["wy"]
+        wz = transpars["wz"]
+        m = transpars["m"]
+        a_old = transpars["a_old"]
+        alpha_old = transpars["alpha_old"]
+        e2_old = transpars["e2_old"]
+        a_new = transpars["a_new"]
+        alpha_new = transpars["alpha_new"]
+        e2_new = transpars["e2_new"]
+        sinb = np.sin(np.radians(b))
+        sinl = np.sin(np.radians(l))
+        cosb = np.cos(np.radians(b))
+        cos2b = np.cos(np.radians(2*b))
+        cosl = np.cos(np.radians(l))
+        delta_a = a_new - a_old
+        delta_e2 = e2_new - e2_old
+        a = (a_old + a_new)/2
+        e2 = (e2_old + e2_new)/2
+        ro = (360 * 3600) / (2.0 * np.pi)
+        n_big = a/((1 - e2*(sinb**2))**0.5)
+        m_big = (a*(1 - e2))/((1 - e2*(sinb**2))**(3.0/2.0))
+        delta_b_part1 = ro/(n_big + m_big)
+        delta_b_part2 = (n_big/a)*e2*sinb*cosb*delta_a
+        delta_b_part3 = ((n_big**2)/(a**2) + 1)*n_big*sinb*cosb*((delta_e2**2)/2)
+        delta_b_part4 = sinb*(dx*cosl + dy*sinl)
+        delta_b_part5 = dz*cosb
+        delta_b_part6 = wx*sinl*(1 - e2*cos2b)
+        delta_b_part7 = wy*cosl*(1 + e2*cos2b)
+        delta_b_part8 = ro*m*e2*sinb*cosb
+        delta_b = delta_b_part1*(delta_b_part2 + delta_b_part3 + delta_b_part4)
+
+
+
+
+
+
+
 
 
 
