@@ -4,11 +4,11 @@ import numpy as np
 import json
 
 
-class Srv():
+class Srv:
 
     def __init__(self):
         self.elldict = self.unpack("ellipsoids.json")
-        self.transparams = self.unpack("transparams.json")
+        self.transparams = self.unpack("transform.json")
 
     def unpack(self, filename):  # Функция для распаковки внешних JSON-файлов в переменные для дальнейшей работы
         return json.loads(open(filename).read())
@@ -35,11 +35,10 @@ class Srv():
             if system_name in one_ellipsoid["systems"]:
                 return one_ellipsoid["name"]
 
-
     def bigsqrt(self, ellipsoid, lat):
         e2 = self.ellparams(ellipsoid)["e2"]
-        sinqB = (np.sin(lat))**2
-        radix = (1 - e2*sinqB)**0.5
+        sinqb = (np.sin(lat))**2
+        radix = (1 - e2*sinqb)**0.5
         return radix
 
     def n_big(self, ellipsoid, lat):
@@ -53,7 +52,6 @@ class Srv():
         numerator = a*(1 - e2)
         denominator = (self.bigsqrt(ellipsoid, lat))**3
         return numerator/denominator
-
 
     # Преобразование эллипсоидальных координат из градусов, минут и секунд
     # в градусы и доли градусов.
@@ -71,10 +69,51 @@ class Srv():
         seconds = rest_minutes*60
         return [degrees, minutes, seconds]
 
-
+    def ellbysystem(self, system):
+        for oneellipsoid in self.elldict:
+            if system in oneellipsoid["systems"]:
+                return self.ellparams(oneellipsoid["name"])
+    
+    # Получение параметров трансформирования. Параметры старого и нового эллипсоидов плюс семь ключей.
+    def transformparams(self, oldsys, newsys):
+        readydict = {}
+        for onesetparam in self.transparams:
+            if oldsys == onesetparam["oldsys"] and newsys == onesetparam["newsys"]:
+                a_old = self.ellbysystem(oldsys)["a"]
+                alpha_old = self.ellbysystem(oldsys)["alpha"]
+                e2_old = self.ellbysystem(oldsys)["e2"]
+                a_new = self.ellbysystem(newsys)["a"]
+                alpha_new = self.ellbysystem(newsys)["alpha"]
+                e2_new = self.ellbysystem(newsys)["e2"]
+                dx = float(onesetparam["dx"])
+                dy = float(onesetparam["dy"])
+                dz = float(onesetparam["dz"])
+                wx = np.radians(float(onesetparam["wx"])/3600)
+                wy = np.radians(float(onesetparam["wy"])/3600)
+                wz = np.radians(float(onesetparam["wz"])/3600)
+                m = float(onesetparam["m"])/(10**6)
+                readydict = {"a_old": a_old,
+                             "alpha_old": alpha_old,
+                             "e2_old": e2_old,
+                             "a_new": a_new,
+                             "alpha_new": alpha_new,
+                             "e2_new": e2_new,
+                             "dx": dx,
+                             "dy": dy,
+                             "dz": dz,
+                             "wx": wx,
+                             "wy": wy,
+                             "wz": wz,
+                             "m": m
+                             }
+        return readydict
+                
 
 # Функции для внутреннего преобразования координат
 class IntTrans:
+
+    def __init__(self):
+        pass
 
     # Преобразование геодезических координат в прямоугольные
     def geodez2geocentr(self, ellipsoid, b_big, l_big, h_big):
@@ -101,11 +140,11 @@ class IntTrans:
                 h_big = z_big*np.sin(b_big) - a*Srv().bigsqrt(ellipsoid, b_big)
             else:
                 l_big_pre = abs(np.arcsin(y_big/r))
-                if x_big > 0 and y_big < 0:
+                if x_big > 0 > y_big:
                     l_big = 2*np.pi - l_big_pre
                 elif x_big < 0 and y_big < 0:
                     l_big = np.pi + l_big_pre
-                elif x_big < 0 and y_big > 0:
+                elif y_big > 0 > x_big:
                     l_big = np.pi - l_big_pre
                 else:
                     l_big = l_big_pre
@@ -120,7 +159,6 @@ class IntTrans:
                     c = np.arcsin(z_big/r_big)
                     p = (e2*a)/(2.0*r_big)
                     s1 = 0
-                    s2 = 0
                     d_norm = np.radians(0.0001/3600)
                     d = 1.0
                     while d >= d_norm:
@@ -132,60 +170,9 @@ class IntTrans:
                     h_big = r*np.cos(b_big) + z_big*np.sin(b_big) - a*Srv().bigsqrt(ellipsoid, b_big)
         return [np.degrees(b_big), np.degrees(l_big), h_big]
 
-    # Преобразование геодезических координат в плоские прямоугольные Гаусса
-    def geodez2gaussb(self, ellipsoid, b_big, l_big, h_big):
-        a = Srv().ellparams(ellipsoid)["a"]
-        e2 = Srv().ellparams(ellipsoid)["e2"]
-        e4 = e2**2
-        es2 = e2/(1 - e2)
-        ro = (360*3600)/(2.0*np.pi)
-        b = np.radians(b_big)
-        n_big = Srv().n_big(ellipsoid, b)
-        m_big = Srv().m_big(ellipsoid, b)
-        l = np.radians(l_big)
-        sinb = np.sin(b)
-        sinb2 = sinb**2
-        sinb4 = sinb**4
-        sin2b = np.sin(2.0*b)
-        cosb = np.cos(b)
-        cosb3 = cosb**3
-        cosb5 = cosb**5
-        cosb7 = cosb**7
-        cos2b = np.cos(2.0*b)
-        tanb = np.tan(b)
-        tanb2 = tanb**2
-        tanb4 = tanb**4
-        tanb6 = tanb**6
-        eta = (es2**0.5)*cosb
-        bsec = b_big*3600
-        nzone = int((l_big + 6)/6.0)
-        l = (l_big - (3.0 + 6.0*(nzone - 1)))/57.29577951
-        print "l = ", l
-        a_big_x = 1 + (3.0/4.0)*e2 + (45.0/64.0)*e4
-        b_big_x = (3.0/4.0)*e2 + (15.0/16.0)*e4
-        c_big_x = (15.0/64.0)*e4
-        x_big = a*(1.0 - e2)*(a_big_x*(bsec/ro) - (b_big_x/2.0)*sin2b + (c_big_x/4.0)*sinb4)
-        a2 = (1.0/2.0)*n_big*sinb*cosb
-        a4 = (1.0/24.0)*n_big*sinb*cosb3*(5.0 - tanb2 + 9.0*(eta**2) + 4.0*(eta**4))
-        a6 = (1.0/720.0)*n_big*sinb*cosb5*(61.0 - 58.0*tanb2 + tanb4 +
-                                           270.0*(eta**2) - 330.0*(eta**2)*tanb2)
-        a8 = (1.0/40320.0)*n_big*sinb*cosb7*(1385.0 - 3111.0*tanb2 + 543.0*tanb4 - tanb6)
-        b1 = n_big*cosb
-        b3 = (1.0/6.0)*n_big*cosb3*(-tanb2 + eta**2)
-        b5 = (1.0/120.0)*n_big*cosb5*(5.0 - 18.0*tanb2 + tanb4 - 14.0*(eta**2) - 58.0*(eta**2)*tanb2)
-        b7 = (1.0/5040.0)*n_big*cosb7*(61.0 - 479.0*tanb2 + 179.0*tanb4 - tanb6)
-        x = x_big + a2*(l**2) + a4*(l**4) + a6*(l**6) + a8*(l**8)
-        print "x_big = ", x_big
-        print a2*(l**2)
-        print a4*(l**4)
-        print a6*(l**6)
-        print a8*(l**8)
-        y = b1*l + b3*(l**3) + b5*(l**5) + b7*(l**7) + 500000
-        return [nzone, x, y]
-
     # Метод преобразования геодезических координат в координаты Гаусса, немного отличающийся
     # от описанного в работе.
-    def geodez2gauss(self, ellipsoid, b_big, l_big):
+    def geodez2gauss(self, ellipsoid, b_big, l_big, h_big):
         a = Srv().ellparams(ellipsoid)["a"]
         e2 = Srv().ellparams(ellipsoid)["e2"]
         e4 = e2**2
@@ -195,7 +182,6 @@ class IntTrans:
         ro = (360*3600)/(2.0*np.pi)
         b = np.radians(b_big)
         n_big = Srv().n_big(ellipsoid, b)
-        m_big = Srv().m_big(ellipsoid, b)
         nzone = int((l_big + 6) / 6.0)
         l = (l_big - (3.0 + 6.0*(nzone - 1))) / 57.29577951
         sinb = np.sin(b)
@@ -204,11 +190,7 @@ class IntTrans:
         sin6b = np.sin(6.0*b)
         cosb = np.cos(b)
         cosb2 = cosb**2
-        cosb3 = cosb**3
         cosb4 = cosb**4
-        cosb5 = cosb**5
-        cosb7 = cosb**7
-        cos2b = np.cos(2.0*b)
         tanb = np.tan(b)
         tanb2 = tanb**2
         tanb4 = tanb**4
@@ -231,8 +213,97 @@ class IntTrans:
         y_part31 = ((l**4)*cosb4)/120.0
         y_part32 = 5.0 - 18.0*tanb2 + tanb4 + 14*(eta**2) - 58*(eta**2)*tanb2
         y_pre = y_part1*(1.0 + y_part21*y_part22 + y_part31*y_part32)
-        y = y_pre + nzone*1000000.0 + 500000.0
-        return [x, y]
+        y = y_pre + 500000.0
+        return [nzone, x, y, h_big]
+
+    def gauss2geodez(self, ellipsoid, nzone, x, y, h_big):
+        ro = (360 * 3600) / (2.0 * np.pi)
+        ys = y - 500000
+        a = Srv().ellparams(ellipsoid)["a"]
+        e2 = Srv().ellparams(ellipsoid)["e2"]
+        e4 = e2**2
+        e6 = e2**3
+        e8 = e2**4
+        es2 = e2/(1 - e2)
+        g0 = 1 + (3.0/4.0)*e2 + (45.0/64.0)*e4 + (175.0/256.0)*e6 + (11025.0/16384.0)*e8
+        q1 = (3.0/8.0)*e2 + (3.0/16.0)*e4 + (213.0/2048.0)*e6 + (255.0/4096.0)*e8
+        q2 = (21.0/256.0)*e4 + (21.0/256.0)*e6 + (549.0/8192.0)*e8
+        q3 = (151.0/6144.0)*e6 + (4065.0/24576.0)*e8
+        beta = x/(g0*a*(1 - e2))
+        print "beta = ", beta
+        b_big_x = beta + q1*np.sin(2*beta) + q2*np.sin(4*beta) + q3*np.sin(6*beta)
+        print "b_big_x", np.degrees(b_big_x)
+        tanbx2 = np.tan(b_big_x)**2
+        tanbx4 = np.tan(b_big_x)**4
+        n_big_x = Srv().n_big(ellipsoid, b_big_x)
+        m_big_x = Srv().m_big(ellipsoid, b_big_x)
+        etax = (es2**0.5)*np.cos(b_big_x)
+        etax2 = etax**2
+        b_big_part1 = ((ys**2)*tanbx2)/(2*n_big_x*m_big_x)
+        print np.degrees(b_big_part1), "---"
+        print ((ys**2)*(1 + etax2)*tanbx2)/(2*(n_big_x**2))
+        b_big_part21 = (ys**2)/(12*(n_big_x**2))
+        b_big_part22 = 5.0 + 3*tanbx2 + etax2 - 9*etax2*tanbx2
+        b_big_part31 = (ys**4)/(360*(n_big_x**4))
+        b_big_part32 = 61 + 90*tanbx2 + 45*tanbx4
+        b_big_part2 = 1 - b_big_part21*b_big_part22 + b_big_part31*b_big_part32
+        print "b_big_part2 = ", b_big_part2
+        b_big = b_big_x - b_big_part1*(1 - b_big_part21*b_big_part22 + b_big_part31*b_big_part32)
+
+        return np.degrees(b_big)
+
+    # Реализация алгоритма, предложенного Серапинасом
+    def gauss2geodez_sepns(self, ellipsoid, nzone, x, y, h_big):
+        ro = (360 * 3600) / (2.0 * np.pi)
+        ys = y - 500000
+        a = Srv().ellparams(ellipsoid)["a"]
+        e2 = Srv().ellparams(ellipsoid)["e2"]
+        e4 = e2 ** 2
+        e6 = e2 ** 3
+        e8 = e2 ** 4
+        es2 = e2 / (1 - e2)
+        s0 = a*(1 - e2)
+        s2 = (3.0/2.0)*e2*s0
+        s4 = (5.0/4.0)*e2*s2
+        s6 = (7.0/6.0)*e2*s4
+        s8 = (9.0/8.0)*e2*s6
+        c_big_0 = s0 + (1.0/2.0)*s2 + (3.0/8.0)*s4 + (5.0/16.0)*s6 + (35.0/128.0)*s8
+        c_big_2 = (1.0/4.0)*(s2 + s4 + (15.0/16.0)*s6 + (7.0/8.0)*s8)
+        c_big_4 = (1.0/32.0)*(s4 + (3.0/2.0)*s6 + (7.0/4.0)*s8)
+        c_big_6 = (1.0/96.0)*((1.0/2.0)*s6 + s8)
+        d_big_2 = (c_big_2/c_big_0)*(1 + c_big_4/c_big_0 - (c_big_2**2)/(2*(c_big_0**2)))
+        d_big_4 = (c_big_2**2)/(c_big_0**2) - (c_big_4/c_big_0)
+        d_big_6 = c_big_6/c_big_0 - ((3*c_big_2)/c_big_0)*(c_big_4/c_big_0 - ((c_big_2**2)/(2*(c_big_0**2))))
+        beta = x/c_big_0
+        sin2beta = np.sin(2*beta)
+        sin4beta = np.sin(4*beta)
+        sin6beta = np.sin(6*beta)
+        b_big_x = beta + d_big_2*sin2beta + d_big_4*sin4beta + d_big_6*sin6beta
+        n_big_x = Srv().n_big(ellipsoid, b_big_x)
+        m_big_x = Srv().m_big(ellipsoid, b_big_x)
+        tanx = np.tan(b_big_x)
+        tanx2 = tanx**2
+        tanx4 = tanx**4
+        etax2 = es2*(np.cos(b_big_x)**2)
+        b_big_part1 = (tanx*ys**2)/(2*m_big_x*n_big_x) # Выражение перед большой и страшной скобкой
+        b_big_part21 = (ys**2)/(12*(n_big_x**2))
+        b_big_part22 = 5 + 3*tanx2 + etax2 - 9*etax2*tanx2
+        b_big_part31 = (ys**4)/(360*(n_big_x**4))
+        b_big_part32 = 61 + 90*tanx2 + 45*tanx4
+        b_big_part2 = b_big_part21*b_big_part22
+        b_big_part3 = b_big_part31*b_big_part32
+        b_big = b_big_x - b_big_part1*(1 - b_big_part2 + b_big_part3)
+        l_part1 = ys/(n_big_x*np.cos(b_big_x))
+        l_part21 = (ys**2)/(6*(n_big_x**2))
+        l_part22 = 1 + 2*tanx2 + etax2
+        l_part31 = (ys**4)/(120*(n_big_x**4))
+        l_part32 = 5 + 28*tanx2 + 24*tanx4 + 6*etax2 + 8*etax2*tanx2
+        l_part2 = l_part21*l_part22
+        l_part3 = l_part31*l_part32
+        l = l_part1*(1 - l_part2 + l_part3)
+        l_big_0 = np.radians(6*nzone - 3)
+        l_big = l_big_0 + l
+        return np.degrees(b_big), np.degrees(l_big)
 
 
 class ExtTrans:
@@ -240,40 +311,62 @@ class ExtTrans:
     def __init__(self):
         pass
 
-    def geocentrhelmert(self, x_big, y_big, z_big):
+    def geocentrhelmert(self, x_big, y_big, z_big, oldsys, newsys):
+        transpars = Srv().transformparams(oldsys, newsys)
+        dx = transpars["dx"]
+        dy = transpars["dy"]
+        dz = transpars["dz"]
+        wx = transpars["wx"]
+        wy = transpars["wy"]
+        wz = transpars["wz"]
+        m = transpars["m"]
+        print dx, dy, dz, wx, wy, wz, m
         oldmatrix = np.matrix([[x_big],
                                [y_big],
                                [z_big]])
+        deltamatrix = np.matrix([[dx],
+                                 [dy],
+                                 [dz]])
+        omegamatrix = np.matrix([[1, wz, -wy],
+                                 [-wz, 1, wx],
+                                 [wy, -wx, 1]])
+        newmatrix = deltamatrix + (1 + m)*omegamatrix*oldmatrix
+        result = np.squeeze(np.asarray(newmatrix))
+        return result
+
+    # def geodezgost(self, b_big, l_big, h_big, oldsys, newsys):
 
 
 
 
-
-
-system = "Krasovsky1940"
-b = Srv().dms2ddd("55 50 54.80512")
-l = Srv().dms2ddd("37 27 21.87885")
-h = 188.232
+system = "WGS84"
+b = Srv().dms2ddd("55 50 54.95392")
+l = Srv().dms2ddd("37 27 15.10279")
+h = 193
 print "Params", Srv().ellparams(system)
 print b, l, h
 print "Geocentr: ", IntTrans().geodez2geocentr(system, b, l, h)
-x = IntTrans().geodez2geocentr(system, b, l, h)[0]
-y = IntTrans().geodez2geocentr(system, b, l, h)[1]
-z = IntTrans().geodez2geocentr(system, b, l, h)[2]
-print "X = ", x
-print "Y = ", y
-print "Z = ", z
-print IntTrans().geocentr2geodez(system, x, y, z)
+x_big = IntTrans().geodez2geocentr(system, b, l, h)[0]
+y_big = IntTrans().geodez2geocentr(system, b, l, h)[1]
+z_big = IntTrans().geodez2geocentr(system, b, l, h)[2]
+print "X = ", x_big
+print "Y = ", y_big
+print "Z = ", z_big
+print IntTrans().geocentr2geodez(system, x_big, y_big, z_big)
 print "*******"
-print Srv().ddd2dms(b)
-print Srv().ddd2dms(IntTrans().geocentr2geodez(system, x, y, z)[0])
+print IntTrans().geodez2gauss(system, b, l, h), "."
+nzone = IntTrans().geodez2gauss(system, b, l, h)[0]
+x = IntTrans().geodez2gauss(system, b, l, h)[1]
+y = IntTrans().geodez2gauss(system, b, l, h)[2]
+h = IntTrans().geodez2gauss(system, b, l, h)[3]
 print "*******"
-print Srv().ddd2dms(l)
-print Srv().ddd2dms(IntTrans().geocentr2geodez(system, x, y, z)[1])
-print "*******"
+print nzone
+print x
+print y
 print h
-print IntTrans().geocentr2geodez(system, x, y, z)[2]
 print "*******"
-print IntTrans().geodez2gauss(system, b, l), "."
+print IntTrans().gauss2geodez_sepns(system, nzone, x, y, h)
 print "*******"
-print IntTrans().geodez2gaussb(system, b, l, h)
+print Srv().ddd2dms(IntTrans().geocentr2geodez(system, x_big, y_big, z_big)[0])
+print Srv().ddd2dms(IntTrans().gauss2geodez_sepns(system, nzone, x, y, h)[0])
+print ExtTrans().geocentrhelmert(x_big, y_big, z_big, "WGS84", "PZ90")
