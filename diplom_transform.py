@@ -57,7 +57,6 @@ class Srv:
     # в градусы и доли градусов.
     def dms2ddd(self, dms):
         dmssplit = dms.split(" ")
-        print "dmssplit", dmssplit[0], dmssplit[1], dmssplit[2]
         degrees = float(dmssplit[0]) + float(dmssplit[1])/60.0 + float(dmssplit[2])/3600.0
         return degrees
 
@@ -162,11 +161,16 @@ class IntTrans:
                     s1 = 0
                     d_norm = np.radians(0.0001/3600)
                     d = 1.0
+                    iterr = 0
                     while d >= d_norm:
+                        iterr += 1
+                        print "Iteration #", iterr, "; d = ", d, "; d_norm = ", d_norm
                         b = c + s1
                         s2 = np.arcsin(p*np.sin(2*b)/Srv().bigsqrt(ellipsoid, b))
                         d = abs(s2 - s1)
                         s1 = s2
+                    iterr += 1
+                    print "Iteration #", iterr, "; d = ", d, "; d_norm = ", d_norm
                     b_big = b
                     h_big = r*np.cos(b_big) + z_big*np.sin(b_big) - a*Srv().bigsqrt(ellipsoid, b_big)
         return [np.degrees(b_big), np.degrees(l_big), h_big]
@@ -448,38 +452,61 @@ class ExtTrans:
 system = "WGS84"
 b = Srv().dms2ddd("55 50 54.95392")
 l = Srv().dms2ddd("37 27 15.10279")
-h = 193
-print "Params", Srv().ellparams(system)
-print b, l, h
-print "Geocentr: ", IntTrans().geodez2geocentr(system, b, l, h)
-x_big = IntTrans().geodez2geocentr(system, b, l, h)[0]
-y_big = IntTrans().geodez2geocentr(system, b, l, h)[1]
-z_big = IntTrans().geodez2geocentr(system, b, l, h)[2]
-print "X = ", x_big
-print "Y = ", y_big
-print "Z = ", z_big
-print IntTrans().geocentr2geodez(system, x_big, y_big, z_big)
-print "*******"
-print IntTrans().geodez2gauss(system, b, l, h), "."
-nzone = IntTrans().geodez2gauss(system, b, l, h)[0]
-x = IntTrans().geodez2gauss(system, b, l, h)[1]
-y = IntTrans().geodez2gauss(system, b, l, h)[2]
-h = IntTrans().geodez2gauss(system, b, l, h)[3]
-print "*******"
-print nzone
-print x
-print y
-print h
-print "*******"
-print IntTrans().gauss2geodez_sepns(system, nzone, x, y)
-print "*******"
-print Srv().ddd2dms(IntTrans().geocentr2geodez(system, x_big, y_big, z_big)[0])
-print Srv().ddd2dms(IntTrans().gauss2geodez_sepns(system, nzone, x, y)[0])
-print "*******"
-print ExtTrans().geocentrhelmert(x_big, y_big, z_big, "WGS84", "PZ90")
-print "*******"
-print ExtTrans().geodezgost(b, l, h, "WGS84", "PZ90")
-print "*******"
-print ExtTrans().geosezmolodstandard(b, l, h, "WGS84", "PZ90")
-print "*******"
-print ExtTrans().geodezmolodshort(b, l, h, "WGS84", "PZ90")
+h = 193.0
+
+print "*** COORDINATE SYSTEM: WGS-84 ***"
+print "=== Geodetic coordinates ==="
+print "B = ", b
+print "L = ", l
+print "H = ", h
+print "=== Geocentric coordinates ==="
+geocentr = IntTrans().geodez2geocentr(system, b, l, h)
+print "X = ", geocentr[0]
+print "Y = ", geocentr[1]
+print "Z = ", geocentr[2]
+geodez = IntTrans().geocentr2geodez(system, geocentr[0], geocentr[1], geocentr[2])
+print "=== Iteration method to geodetic coordinates ==="
+print "B = ", geodez[0]
+print "L = ", geodez[1]
+print "H = ", geodez[2]
+gauss = IntTrans().geodez2gauss(system, b, l, h)
+print "=== Plain Gauss coordinates ==="
+print "Zone: ", gauss[0]
+print "x = ", gauss[1]
+print "y = ", gauss[2]
+gageo = IntTrans().gauss2geodez_sepns(system, gauss[0], gauss[1], gauss[2])
+print "Plain Gauss coordinates to Geodetic"
+print "B = ", gageo[0]
+print "L = ", gageo[1]
+print "*** CONVERTATION FROM WGS84 TO PZ90 ***"
+newsystem = "PZ90"
+print "Seven transform parameters"
+params = Srv().transformparams(system, newsystem)
+print "DELTA X = ", params["dx"]
+print "DELTA Y = ", params["dy"]
+print "DELTA Z = ", params["dz"]
+print "omega X = ", params["wx"]
+print "omega Y = ", params["wy"]
+print "omega Z = ", params["wz"]
+print "m = ", params["m"]
+print "=== Helmert transformation ==="
+helm = ExtTrans().geocentrhelmert(geocentr[0], geocentr[1], geocentr[2], system, newsystem)
+print "X = ", helm[0]
+print "Y = ", helm[1]
+print "Z = ", helm[2]
+print "=== GOST geodetic convertation ==="
+gost = ExtTrans().geodezgost(b, l, h, system, newsystem)
+print 'B = ', gost[0]
+print "L = ", gost[1]
+print "H = ", gost[2]
+print "=== Standard Molodensky transformation ==="
+smol = ExtTrans().geosezmolodstandard(b, l, h, system, newsystem)
+print 'B = ', smol[0]
+print "L = ", smol[1]
+print "H = ", smol[2]
+print "=== Abridged Molodensky transformation ==="
+amol = ExtTrans().geodezmolodshort(b, l, h, system, newsystem)
+print 'B = ', amol[0]
+print "L = ", amol[1]
+print "H = ", amol[2]
+print "=== END ==="
